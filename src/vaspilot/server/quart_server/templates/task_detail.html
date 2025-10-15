@@ -193,11 +193,164 @@
             padding: 0.25rem;
             font-size: 0.75rem;
         }
+        
+        /* 聊天界面样式 */
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 700px;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .chat-message {
+            display: flex;
+            align-items: flex-start;
+            max-width: 80%;
+        }
+        
+        .chat-message.user {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+        
+        .chat-message.assistant {
+            align-self: flex-start;
+        }
+        
+        .chat-bubble {
+            padding: 12px 16px;
+            border-radius: 12px;
+            word-wrap: break-word;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        
+        .chat-message.user .chat-bubble {
+            background-color: #007bff;
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+        
+        .chat-message.assistant .chat-bubble {
+            background-color: white;
+            color: #212529;
+            border: 1px solid #dee2e6;
+            border-bottom-left-radius: 4px;
+        }
+        
+        .chat-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin: 0 8px;
+            flex-shrink: 0;
+        }
+        
+        .chat-message.user .chat-avatar {
+            background-color: #007bff;
+            color: white;
+        }
+        
+        .chat-message.assistant .chat-avatar {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .chat-input-area {
+            padding: 16px;
+            background-color: white;
+            border-top: 1px solid #dee2e6;
+            border-bottom-left-radius: 8px;
+            border-bottom-right-radius: 8px;
+        }
+        
+        .chat-input-wrapper {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .chat-input {
+            flex: 1;
+            resize: none;
+            border: 1px solid #ced4da;
+            border-radius: 20px;
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+        
+        .chat-input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+        }
+        
+        .chat-send-btn {
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* 标签页样式 */
+        .workflow-tabs {
+            border-bottom: 2px solid #dee2e6;
+            margin-bottom: 15px;
+        }
+        
+        .workflow-tab {
+            display: inline-block;
+            padding: 8px 16px;
+            margin-right: 5px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            border-bottom: none;
+            border-radius: 4px 4px 0 0;
+            background-color: #f8f9fa;
+            color: #6c757d;
+            transition: all 0.2s;
+        }
+        
+        .workflow-tab:hover {
+            background-color: #e9ecef;
+        }
+        
+        .workflow-tab.active {
+            background-color: white;
+            color: #1976d2;
+            border-color: #dee2e6;
+            border-bottom-color: white;
+            font-weight: bold;
+        }
+        
+        .workflow-content {
+            display: none;
+        }
+        
+        .workflow-content.active {
+            display: block;
+        }
     </style>
   </head>
 <body>
     <!-- 自动刷新提示 -->
-    <div class="refresh-indicator" id="refresh-indicator">🔄 Refreshing...</div>
+    
     
     <div class="container-fluid">
         <div class="row">
@@ -253,7 +406,7 @@
                 <div class="card mb-4">
                     <div class="card-header">
                         <div class="d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">Task details</h5>
+                            <h5 class="mb-0">Task Details: {{ task.conversation_id }}</h5>
                             <div class="d-flex align-items-center">
                                 <span class="badge main-task-status-badge
                                     {% if task.status == 'completed' %}bg-success
@@ -271,41 +424,27 @@
                                     {% else %}等待中
                                     {% endif %}
                                 </span>
-                                <!-- 停止任务按钮 -->
-                                {% if task.status in ['running', 'pending', 'queued'] %}
-                                <button class="btn btn-danger btn-sm ms-2" id="stop-task-btn" onclick="stopTask()">
+                                <!-- 停止任务按钮（始终渲染，初始按状态显示/隐藏） -->
+                                <button class="btn btn-danger btn-sm ms-2" id="stop-task-btn" onclick="stopTask()" style="display: none;">
                                     <i class="fas fa-stop"></i> 停止任务
                                 </button>
-                                {% endif %}
                             </div>
                         </div>
                     </div>
-                    <div class="card-body">
-                        <h6 class="card-title">{{ task.task_description }}</h6>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <small class="text-muted">
-                                    <strong>Conversation ID:</strong> {{ task.conversation_id }}<br>
-                                    <strong>Creation time:</strong> {{ task.created_at }}<br>
-                                    {% if task.started_at %}
-                                    <strong>Start time:</strong> {{ task.started_at }}<br>
-                                    {% endif %}
-                                    {% if task.completed_at %}
-                                    <strong>Completion time:</strong> {{ task.completed_at }}<br>
-                                    {% endif %}
-                                </small>
+                    <div class="card-body p-0">
+                        <!-- 聊天界面 -->
+                        <div class="chat-container">
+                            <div class="chat-messages" id="chat-messages">
+                                <!-- 消息将通过JavaScript动态渲染 -->
                             </div>
-                            <div class="col-md-6">
-                                {% if task.error_message %}
-                                <div class="alert alert-danger" role="alert">
-                                    <strong>Error message:</strong> {{ task.error_message }}
+                            <div class="chat-input-area">
+                                <div class="chat-input-wrapper">
+                                    <textarea class="chat-input" id="chat-input" rows="1" placeholder="输入消息..." disabled></textarea>
+                                    <button class="btn btn-primary chat-send-btn" id="chat-send-btn" onclick="sendChatMessage()" disabled>
+                                        <i class="fas fa-paper-plane"></i>
+                                    </button>
                                 </div>
-                                {% endif %}
-                                {% if task.result %}
-                                <div class="alert alert-success" role="alert">
-                                    <strong>Execution result:</strong> Task completed
-                                </div>
-                                {% endif %}
+                                <small class="text-muted mt-2 d-block" id="chat-status-hint"></small>
                             </div>
                         </div>
                     </div>
@@ -320,9 +459,16 @@
                         </h6>
                     </div>
                     <div class="card-body workflow-chart">
-                        <div id="workflow-mermaid" class="mermaid">
+                        <!-- 标签页导航 -->
+                        <div class="workflow-tabs" id="workflow-tabs">
+                            <!-- 标签将在这里动态生成 -->
+                        </div>
+                        
+                        <!-- 流程图内容区 -->
+                        <div id="workflow-contents">
                             <!-- 流程图将在这里动态生成 -->
                         </div>
+                        
                         <div class="text-center mt-3" id="workflow-loading" style="display: none;">
                             <div class="spinner-border spinner-border-sm text-primary" role="status">
                                 <span class="sr-only">生成流程图中...</span>
@@ -433,6 +579,7 @@
         </div>
     </div>
 
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-core.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/plugins/autoloader/prism-autoloader.min.js"></script>
@@ -442,11 +589,176 @@
     let refreshInterval = null;
     let lastUpdateTime = 0;
     let isUpdating = false;
+    let currentMessages = [];
+    let selectedWorkflowTabIndex = 0; // 记录当前激活的Round索引，防止更新后回到Round 1
+    let eventSource = null; // SSE 连接
+    let sseDebounceTimer = null; // SSE触发的去抖更新
     
     // 页面加载时清理任何遗留的定时器
     if (refreshInterval) {
         clearInterval(refreshInterval);
         refreshInterval = null;
+    }
+    
+    // 渲染聊天消息
+    function renderChatMessages(messages) {
+        const chatContainer = document.getElementById('chat-messages');
+        if (!chatContainer) return;
+        
+        // 清空现有消息
+        chatContainer.innerHTML = '';
+        
+        // 渲染每条消息
+        messages.forEach(msg => {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'chat-message ' + (msg.role === 'User' ? 'user' : 'assistant');
+            
+            const avatarDiv = document.createElement('div');
+            avatarDiv.className = 'chat-avatar';
+            avatarDiv.textContent = msg.role === 'User' ? 'U' : 'A';
+            
+            const bubbleDiv = document.createElement('div');
+            bubbleDiv.className = 'chat-bubble markdown-content';
+            
+            // 使用 marked.js 渲染 markdown，并复用 processFilePaths 匹配并注入图片/结构查看入口
+            try {
+                let rendered = '';
+                if (typeof marked !== 'undefined') {
+                    rendered = marked.parse(msg.content);
+                } else {
+                    // 退化为简单转义
+                    rendered = (msg.content || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                }
+                if (typeof processFilePaths === 'function') {
+                    try {
+                        rendered = processFilePaths(rendered);
+                    } catch (pfErr) {
+                        console.warn('processFilePaths failed:', pfErr);
+                    }
+                }
+                bubbleDiv.innerHTML = rendered;
+            } catch (e) {
+                console.error('Chat message rendering failed:', e);
+                bubbleDiv.textContent = msg.content || '';
+            }
+            
+            messageDiv.appendChild(avatarDiv);
+            messageDiv.appendChild(bubbleDiv);
+            chatContainer.appendChild(messageDiv);
+        });
+        
+        // 滚动到底部
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+        
+        currentMessages = messages;
+    }
+    
+    // 发送聊天消息
+    async function sendChatMessage() {
+        const input = document.getElementById('chat-input');
+        const sendBtn = document.getElementById('chat-send-btn');
+        const message = input.value.trim();
+        
+        if (!message) {
+            showNotification('请输入消息内容', 'info');
+            return;
+        }
+        
+        try {
+            // 禁用输入和按钮
+            input.disabled = true;
+            sendBtn.disabled = true;
+            sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            
+            const taskId = getCurrentTaskId();
+            const response = await fetch('/api/task/' + taskId + '/user_message', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: message })
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok && result.success) {
+                showNotification('消息已发送', 'success');
+                input.value = '';
+                
+                // 立即添加消息到聊天窗口（乐观更新）
+                const newMessage = {
+                    role: 'User',
+                    content: message,
+                    timestamp: new Date().toISOString()
+                };
+                currentMessages.push(newMessage);
+                renderChatMessages(currentMessages);
+                
+                // 获取最新数据
+                setTimeout(() => {
+                    fetchLatestData(false);
+                }, 500);
+            } else {
+                showNotification(result.error || '发送失败', 'error');
+            }
+        } catch (error) {
+            showNotification('发送失败: ' + error.message, 'error');
+        } finally {
+            // 恢复输入状态（根据当前任务状态）
+            setTimeout(() => {
+                updateChatInputAvailability(currentTaskData?.logs || [], currentTaskData?.task?.status);
+            }, 100);
+        }
+    }
+    
+    // 更新聊天输入框可用性
+    function updateChatInputAvailability(logs, taskStatus) {
+        const input = document.getElementById('chat-input');
+        const sendBtn = document.getElementById('chat-send-btn');
+        const statusHint = document.getElementById('chat-status-hint');
+        
+        if (!input || !sendBtn || !statusHint) return;
+        
+        let enabled = false;
+        let hintText = '';
+        
+        // 条件1: 任务状态为 completed
+        if (taskStatus === 'completed') {
+            enabled = true;
+            hintText = '任务已完成，可以继续对话';
+        }
+        // 条件2: 任务状态为 running 且最后一条记录是 wait_calculations 或 ask_user
+        else if (taskStatus === 'running' && Array.isArray(logs) && logs.length > 0) {
+            const lastLog = logs[logs.length - 1];
+            if (lastLog && (lastLog.type === 'tool_input' || lastLog.type === 'conversation_messages')) {
+                // 获取工具名称
+                let toolName = lastLog.role_name || '';
+                if (!toolName && lastLog.content) {
+                    try {
+                        const parsed = JSON.parse(lastLog.content);
+                        toolName = parsed.tool_name || parsed.name || '';
+                    } catch (_) {}
+                }
+                
+                if (lastLog.type === 'conversation_messages' || toolName === 'wait_calculations' || toolName === 'ask_user') {
+                    enabled = true;
+                    hintText = '等待您的输入...';
+                } else {
+                    hintText = '任务运行中，暂时无法输入';
+                }
+            } else {
+                hintText = '任务运行中，暂时无法输入';
+            }
+        } else {
+            hintText = '任务未运行，无法输入';
+        }
+        
+        input.disabled = !enabled;
+        sendBtn.disabled = !enabled;
+        statusHint.textContent = hintText;
+        
+        // 如果启用，重置按钮图标
+        if (enabled) {
+            sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
+        }
     }
     
     // 查找并处理文件路径
@@ -793,6 +1105,7 @@
         }
     }
     
+
     // 更新停止按钮显示状态
     function updateStopButton(status) {
         const stopBtn = document.getElementById('stop-task-btn');
@@ -1061,19 +1374,131 @@
         return historyItem;
     }
     
+    // 切换工作流标签页
+    function switchWorkflowTab(tabIndex) {
+        // 移除所有激活状态
+        document.querySelectorAll('.workflow-tab').forEach(tab => tab.classList.remove('active'));
+        document.querySelectorAll('.workflow-content').forEach(content => content.classList.remove('active'));
+        
+        // 激活选中的标签和内容
+        const selectedTab = document.querySelector(`[data-tab-index="${tabIndex}"]`);
+        const selectedContent = document.getElementById(`workflow-content-${tabIndex}`);
+        
+        if (selectedTab) selectedTab.classList.add('active');
+        if (selectedContent) selectedContent.classList.add('active');
+        selectedWorkflowTabIndex = tabIndex;
+    }
+    
     // 生成工作流程图
     async function generateWorkflowChart(logs) {
-        const workflowContainer = document.getElementById('workflow-mermaid');
+        const tabsContainer = document.getElementById('workflow-tabs');
+        const contentsContainer = document.getElementById('workflow-contents');
         const loadingIndicator = document.getElementById('workflow-loading');
         
-        if (!workflowContainer || !logs || logs.length === 0) {
+        if (!tabsContainer || !contentsContainer || !logs || logs.length === 0) {
             return;
         }
         
         // 显示加载状态
         loadingIndicator.style.display = 'block';
-        workflowContainer.innerHTML = '';
+        // 记录更新前的激活索引
+        let prevActiveIndex = (typeof selectedWorkflowTabIndex === 'number') ? selectedWorkflowTabIndex : 0;
+        tabsContainer.innerHTML = '';
+        contentsContainer.innerHTML = '';
         
+        try {
+            // 第一步：找到所有 Project Manager 的 Input 和 Output，作为分段点
+            const pmSegments = [];
+            let currentSegmentStart = null;
+            
+            logs.forEach((log, index) => {
+                const isPM = log.role_name && log.role_name.toLowerCase().includes('project') && log.role_name.toLowerCase().includes('manager');
+                
+                if (isPM && log.type === 'agent_input') {
+                    // Project Manager Input - 开始一个新段落
+                    currentSegmentStart = index;
+                } else if (isPM && log.type === 'agent_output' && currentSegmentStart !== null) {
+                    // Project Manager Output - 结束当前段落
+                    pmSegments.push({
+                        start: currentSegmentStart,
+                        end: index,
+                        logs: logs.slice(currentSegmentStart, index + 1) // 不包含PM自己
+                    });
+                    currentSegmentStart = null;
+                }
+            });
+            // 若存在尚未闭合的段（PM输入已出现但PM输出尚未到来），将其作为进行中的段纳入渲染
+            if (currentSegmentStart !== null) {
+                pmSegments.push({
+                    start: currentSegmentStart,
+                    end: logs.length - 1,
+                    logs: logs.slice(currentSegmentStart) // 不包含PM自己
+                });
+                currentSegmentStart = null;
+            }
+            
+            // 如果没有找到段落，退化为使用全部日志作为一个段，确保及时显示
+            if (pmSegments.length === 0) {
+                pmSegments.push({
+                    start: 0,
+                    end: logs.length - 1,
+                    logs: logs
+                });
+            }
+            
+            // 计算希望激活的标签索引（夹在有效范围内）
+            const desiredActiveIndex = Math.min(Math.max(Number(prevActiveIndex) || 0, 0), Math.max(pmSegments.length - 1, 0));
+            selectedWorkflowTabIndex = desiredActiveIndex;
+
+            // 第二步：为每个段落生成标签和流程图（保持此前选择）
+            pmSegments.forEach((segment, segmentIndex) => {
+                // 创建标签
+                const tab = document.createElement('div');
+                tab.className = 'workflow-tab' + (segmentIndex === desiredActiveIndex ? ' active' : '');
+                tab.setAttribute('data-tab-index', segmentIndex);
+                tab.textContent = `Round ${segmentIndex + 1}`;
+                tab.onclick = () => switchWorkflowTab(segmentIndex);
+                tabsContainer.appendChild(tab);
+                
+                // 创建内容容器
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'workflow-content' + (segmentIndex === desiredActiveIndex ? ' active' : '');
+                contentDiv.id = `workflow-content-${segmentIndex}`;
+                contentsContainer.appendChild(contentDiv);
+            });
+            
+            // 第三步：为每个段落生成流程图
+            for (let segmentIndex = 0; segmentIndex < pmSegments.length; segmentIndex++) {
+                const segment = pmSegments[segmentIndex];
+                const contentDiv = document.getElementById(`workflow-content-${segmentIndex}`);
+                
+                // 创建 mermaid 容器
+                const mermaidContainer = document.createElement('div');
+                mermaidContainer.className = 'mermaid';
+                mermaidContainer.id = `workflow-mermaid-${segmentIndex}`;
+                contentDiv.appendChild(mermaidContainer);
+                
+                // 生成该段落的流程图
+                await generateSingleWorkflowChart(segment.logs, logs, mermaidContainer, segmentIndex);
+            }
+            
+        } catch (error) {
+            console.error('Workflow generation failed:', error);
+            contentsContainer.innerHTML = 
+                '<div class="alert alert-warning">' +
+                    '<i class="fas fa-exclamation-triangle"></i> Workflow generation failed' +
+                    '<br><small class="text-muted">错误: ' + error.message + '</small>' +
+                '</div>';
+        } finally {
+            // 隐藏加载状态
+            loadingIndicator.style.display = 'none';
+        }
+        
+        // 注意：点击事件现在直接在SVG元素上绑定，不需要全局函数
+    }
+    
+    // 生成单个工作流程图的辅助函数
+    async function generateSingleWorkflowChart(segmentLogs, allLogs, container, segmentIndex) {
         try {
             // 使用栈结构管理Agent和Tool
             const agentStack = [];  // Agent栈
@@ -1083,125 +1508,162 @@
             const connections = []; // 连接关系
             let agentIndex = 0;
             let toolIndex = 0;
-            let lastAgent = null;   // 记录上一个完成的Agent
+            const poppedAgents = []; // 出栈顺序记录
+            let firstAgentId = null; // 首个入栈Agent的ID
+            let renderEnd = false;   // 是否渲染End
             
-            logs.forEach((log, index) => {
-                // 过滤掉manager相关的日志
-                // const isManagerRelated = log.role_name && log.role_name.toLowerCase().includes('manager');
-                // if (isManagerRelated) {
-                //    return;
-                //}
+            segmentLogs.forEach((log, relativeIndex) => {
+                // 过滤掉 Project Manager 相关的日志
+                // const isPM = log.role_name && log.role_name.toLowerCase().includes('project') && log.role_name.toLowerCase().includes('manager');
+                // if (isPM) {
+                //     return;
+                // }
                 
-                // 处理Agent输入
+                // 如果 Project Manager 在栈顶，跳过工具调用
+                const topAgent = agentStack[agentStack.length - 1];
+                const pmAtTop = topAgent && topAgent.originalName && topAgent.originalName.toLowerCase().includes('project') && topAgent.originalName.toLowerCase().includes('manager');
+                if (pmAtTop && (log.type === 'tool_input' || log.type === 'tool_output')) {
+                    return;
+                }
+                
+                // 处理Agent输入（入栈时渲染节点，并根据栈深规则连线）
                 if (log.type === 'agent_input') {
                     let agentName = log.role_name || 'Agent-' + (agentIndex + 1);
                     if (agentName.length > 25) {
                         agentName = agentName.substring(0, 22) + '...';
                     }
-                    
+
+                    // 入栈前的Agent与Tool栈信息
+                    const preAgentDepth = agentStack.length;
+                    const toolTopBefore = toolStack.length > 0 ? toolStack[toolStack.length - 1] : null;
+
+                    // 在 allLogs 中找到该日志的实际索引
+                    const actualIndex = allLogs.findIndex(l => l.timestamp === log.timestamp && l.content === log.content);
+
                     const agent = {
-                        id: 'agent' + (agentIndex++),
+                        id: `agent${segmentIndex}_${agentIndex}`,
                         name: agentName,
                         originalName: log.role_name,
                         timestamp: log.timestamp,
-                        logIndex: index
+                        logIndex: actualIndex >= 0 ? actualIndex : relativeIndex,
+                        enterMode: 'first' // 默认置位，后续根据preAgentDepth修正
                     };
-                    
-                    // Agent入栈
+                    agentIndex++;
+
+                    // Agent入栈并记录
+                    // 仅当AgentStack的栈深>=1时才加入allAgents
+                    if (agentStack.length >= 1) {
+                        allAgents.push(agent);
+                    }
                     agentStack.push(agent);
-                    allAgents.push(agent);
-                    
-                    // 根据规则创建连接
-                    if (toolStack.length > 0) {
-                        // Tool栈顶有记录，用虚线从Tool指向该Agent
-                        const topTool = toolStack[toolStack.length - 1];
-                        connections.push({
-                            from: topTool.id,
-                            to: agent.id,
-                            type: 'dashed'
-                        });
-                    } else if (lastAgent) {
-                        // Tool栈为空，用实线从上一个Agent指向该Agent
-                        connections.push({
-                            from: lastAgent.id,
-                            to: agent.id,
-                            type: 'solid'
-                        });
+
+                    // 规则3：Agent入栈连线
+                    if (preAgentDepth === 0) {
+                        // 第一个Agent：仅渲染Start，不连线
+                        if (!firstAgentId) firstAgentId = agent.id;
+                        agent.enterMode = 'first';
+                    } else if (preAgentDepth === 1) {
+                        // 只有一个Agent在栈：若已有出栈记录，用“上一个出栈的Agent -> 当前Agent”；否则“Start -> 当前Agent”
+                        const lastPopped = poppedAgents.length > 0 ? poppedAgents[poppedAgents.length - 1] : null;
+                        if (lastPopped) {
+                            connections.push({ from: lastPopped.id, to: agent.id, type: 'solid' });
+                        } else {
+                            connections.push({ from: 'Start', to: agent.id, type: 'solid' });
+                        }
+                        agent.enterMode = 'chain';
+                    } else {
+                        // 其他情况（嵌套）：从Tool栈顶到当前Agent画虚线（若有）
+                        if (toolTopBefore) {
+                            connections.push({ from: toolTopBefore.id, to: agent.id, type: 'dashed' });
+                        }
+                        agent.enterMode = 'nested';
                     }
                 }
                 
-                // 处理Agent输出
+                // 处理Agent输出（出栈后根据规则连线）
                 else if (log.type === 'agent_output') {
-                    // 找到对应的Agent并出栈
-                    const agentIdx = agentStack.findIndex(a => a.originalName === log.role_name);
+                    // 从栈顶向下查找匹配的Agent（严格栈语义）
+                    let agentIdx = -1;
+                    for (let i = agentStack.length - 1; i >= 0; i--) {
+                        if (agentStack[i].originalName === log.role_name) { agentIdx = i; break; }
+                    }
                     if (agentIdx !== -1) {
                         const agent = agentStack[agentIdx];
-                        
-                        // 如果Tool栈顶有记录，用虚线从Agent指回Tool
-                        if (toolStack.length > 0) {
+
+                        // 若为嵌套进入，出栈时从Agent指向Tool栈顶（若有）画虚线
+                        if (agent.enterMode === 'nested' && toolStack.length > 0) {
                             const topTool = toolStack[toolStack.length - 1];
-                            connections.push({
-                                from: agent.id,
-                                to: topTool.id,
-                                type: 'dashed'
-                            });
+                            connections.push({ from: agent.id, to: topTool.id, type: 'dashed' });
                         }
-                        
-                        // Agent出栈
+
+                        // 真正出栈
                         agentStack.splice(agentIdx, 1);
-                        
-                        // 记录为最后完成的Agent
-                        lastAgent = agent;
+
+                        // 在将当前出栈的Agent加入出栈列表之前，若这是首个Agent，则根据“倒数第二个出栈者 -> End”连线
+                        if (agent.id === firstAgentId) {
+                            const preLast = poppedAgents.length > 0 ? poppedAgents[poppedAgents.length - 1] : null;
+                            if (preLast) {
+                                connections.push({ from: preLast.id, to: 'End', type: 'solid' });
+                            }
+                            renderEnd = true; // 仅此时渲染End
+                        }
+
+                        // 记录出栈顺序
+                        poppedAgents.push(agent);
                     }
                 }
                 
-                // 处理Tool输入
+                // 处理Tool输入（仅在Agent栈深>=1时渲染Tool块与连线）
                 else if (log.type === 'tool_input') {
+                    if (agentStack.length === 0) {
+                        // 无活动Agent时不渲染Tool
+                        return;
+                    }
+
                     let toolName = log.role_name || 'Tool-' + (toolIndex + 1);
                     if (toolName.length > 20) {
                         toolName = toolName.substring(0, 17) + '...';
                     }
-                    
+
+                    // 在 allLogs 中找到该日志的实际索引
+                    const actualIndex = allLogs.findIndex(l => l.timestamp === log.timestamp && l.content === log.content);
+
                     const tool = {
-                        id: 'tool' + (toolIndex++),
+                        id: `tool${segmentIndex}_${toolIndex}`,
                         name: toolName,
                         originalName: log.role_name,
                         timestamp: log.timestamp,
-                        logIndex: index
+                        logIndex: actualIndex >= 0 ? actualIndex : relativeIndex
                     };
-                    
+                    toolIndex++;
+
                     // Tool入栈
                     toolStack.push(tool);
                     allTools.push(tool);
-                    
-                    // 如果Agent栈顶有记录，用虚线从Agent指向Tool
-                    if (agentStack.length > 0) {
-                        const topAgent = agentStack[agentStack.length - 1];
-                        connections.push({
-                            from: topAgent.id,
-                            to: tool.id,
-                            type: 'dashed'
-                        });
+
+                    // 虚线：Agent(栈顶) -> Tool
+                    const topAgent = agentStack[agentStack.length - 1];
+                    if (topAgent) {
+                        connections.push({ from: topAgent.id, to: tool.id, type: 'dashed' });
                     }
                 }
                 
                 // 处理Tool输出
                 else if (log.type === 'tool_output') {
-                    // 找到对应的Tool并出栈
-                    const toolIdx = toolStack.findIndex(t => t.originalName === log.role_name);
+                    // 从栈顶向下查找匹配的Tool（严格栈语义）
+                    let toolIdx = -1;
+                    for (let i = toolStack.length - 1; i >= 0; i--) {
+                        if (toolStack[i].originalName === log.role_name) { toolIdx = i; break; }
+                    }
                     if (toolIdx !== -1) {
                         const tool = toolStack[toolIdx];
-                        
-                        // 如果Agent栈顶有记录，用虚线从Tool指回Agent
+
+                        // 虚线：Tool -> Agent(栈顶)
                         if (agentStack.length > 0) {
                             const topAgent = agentStack[agentStack.length - 1];
-                            connections.push({
-                                from: tool.id,
-                                to: topAgent.id,
-                                type: 'dashed'
-                            });
+                            connections.push({ from: tool.id, to: topAgent.id, type: 'dashed' });
                         }
-                        
+
                         // Tool出栈
                         toolStack.splice(toolIdx, 1);
                     }
@@ -1214,18 +1676,21 @@
             if (allAgents.length === 0 && allTools.length === 0) {
                 mermaidCode += '    Start([Start]) --> End([End])\n';
             } else {
-                // 添加开始节点
+                // 添加开始节点（End 仅在需要时渲染）
                 mermaidCode += '    Start([Start])\n';
+                if (renderEnd || connections.some(c => c.to === 'End' || c.from === 'End')) {
+                    mermaidCode += '    End([End])\n';
+                }
                 
                 // 创建所有Agent节点
                 allAgents.forEach((agent) => {
                     let safeName = agent.name.replace(/[^\w\s\-\.\u4e00-\u9fff]/g, '').trim();
                     if (!safeName || safeName.match(/^Agent[-\s]*\d*$/i)) {
-                        safeName = 'Agent' + agent.id.replace('agent', '');
+                        safeName = 'Agent' + agent.id.replace(/^agent\d+_/, '');
                     }
                     safeName = safeName.replace(/^(Agent|agent|代理)[-\s]*/i, '');
                     if (!safeName) {
-                        safeName = 'Agent' + agent.id.replace('agent', '');
+                        safeName = 'Agent' + agent.id.replace(/^agent\d+_/, '');
                     }
                     if (safeName.length > 25) {
                         safeName = safeName.substring(0, 22) + '...';
@@ -1237,11 +1702,11 @@
                 allTools.forEach((tool) => {
                     let safeToolName = tool.name.replace(/[^\w\s\-\.\u4e00-\u9fff]/g, '').trim();
                     if (!safeToolName || safeToolName.match(/^Tool[-\s]*\d*$/i)) {
-                        safeToolName = 'Tool' + tool.id.replace('tool', '');
+                        safeToolName = 'Tool' + tool.id.replace(/^tool\d+_/, '');
                     }
                     safeToolName = safeToolName.replace(/^(Tool|tool)[-\s]*/i, '');
                     if (!safeToolName) {
-                        safeToolName = 'Tool' + tool.id.replace('tool', '');
+                        safeToolName = 'Tool' + tool.id.replace(/^tool\d+_/, '');
                     }
                     if (safeToolName.length > 20) {
                         safeToolName = safeToolName.substring(0, 17) + '...';
@@ -1249,7 +1714,7 @@
                     mermaidCode += '    ' + tool.id + '[' + safeToolName + ']\n';
                 });
                 
-                // 添加所有连接
+                // 添加所有连接（含 Start/End 与虚线/实线）
                 connections.forEach(conn => {
                     if (conn.type === 'solid') {
                         mermaidCode += '    ' + conn.from + ' --> ' + conn.to + '\n';
@@ -1257,22 +1722,6 @@
                         mermaidCode += '    ' + conn.from + ' -.-> ' + conn.to + '\n';
                     }
                 });
-                
-                // 连接开始和结束节点
-                if (allAgents.length > 0) {
-                    // 找到第一个Agent（没有其他Agent指向它的）
-                    const firstAgent = allAgents.find(agent => 
-                        !connections.some(conn => conn.to === agent.id && conn.type === 'solid')
-                    );
-                    if (firstAgent) {
-                        mermaidCode += '    Start --> ' + firstAgent.id + '\n';
-                    }
-                    
-                    // 找到最后一个Agent（lastAgent）
-                    if (lastAgent) {
-                        mermaidCode += '    ' + lastAgent.id + ' --> End([End])\n';
-                    }
-                }
             }
             
             // 添加样式
@@ -1287,22 +1736,26 @@
             allTools.forEach(tool => {
                 mermaidCode += '    class ' + tool.id + ' toolNode\n';
             });
-            mermaidCode += '    class Start,End startEndNode\n';
+            // 为开始/结束节点附样式（End 可能未渲染）
+            mermaidCode += '    class Start startEndNode\n';
+            if (renderEnd || connections.some(c => c.to === 'End' || c.from === 'End') || (allAgents.length === 0 && allTools.length === 0)) {
+                mermaidCode += '    class End startEndNode\n';
+            }
             
             console.log('生成的Mermaid代码:', mermaidCode);
             
             // 渲染流程图
             if (typeof mermaid !== 'undefined') {
                 // 清除之前的内容
-                workflowContainer.innerHTML = '';
+                container.innerHTML = '';
                 
                 // 使用现代的Mermaid API
                 try {
-                    const renderResult = await mermaid.render('workflow-graph-' + Date.now(), mermaidCode);
-                    workflowContainer.innerHTML = renderResult.svg;
+                    const renderResult = await mermaid.render(`workflow-graph-${segmentIndex}-` + Date.now(), mermaidCode);
+                    container.innerHTML = renderResult.svg;
                     
                     // 手动绑定点击事件到SVG元素（使用事件委托，兼容Mermaid生成的ID前缀）
-                    const svgElement = workflowContainer.querySelector('svg');
+                    const svgElement = container.querySelector('svg');
                     if (svgElement) {
                         svgElement.style.cursor = 'pointer';
                         svgElement.addEventListener('click', function(event) {
@@ -1325,7 +1778,7 @@
                                         if (activityNode) break;
                                     }
                                     if (activityNode) {
-                                        jumpToActivityDetails(activityNode, 'agent', logs);
+                                        jumpToActivityDetails(activityNode, 'agent', allLogs);
                                         matched = true;
                                         break;
                                     }
@@ -1335,7 +1788,7 @@
                                         if (toolNode) break;
                                     }
                                     if (toolNode) {
-                                        jumpToActivityDetails(toolNode, 'tool', logs);
+                                        jumpToActivityDetails(toolNode, 'tool', allLogs);
                                         matched = true;
                                         break;
                                     }
@@ -1362,11 +1815,11 @@
                         const mermaidElement = document.createElement('div');
                         mermaidElement.className = 'mermaid';
                         mermaidElement.textContent = mermaidCode;
-                        workflowContainer.appendChild(mermaidElement);
+                        container.appendChild(mermaidElement);
                         mermaid.init(undefined, mermaidElement);
                         console.log('使用回退方法渲染流程图');
                         // 回退渲染后同样绑定事件（事件委托）
-                        const svgElement = workflowContainer.querySelector('svg');
+                        const svgElement = container.querySelector('svg');
                         if (svgElement) {
                             svgElement.style.cursor = 'pointer';
                             svgElement.addEventListener('click', function(event) {
@@ -1388,7 +1841,7 @@
                                             if (activityNode) break;
                                         }
                                         if (activityNode) {
-                                            jumpToActivityDetails(activityNode, 'agent', logs);
+                                            jumpToActivityDetails(activityNode, 'agent', allLogs);
                                             matched = true;
                                             break;
                                         }
@@ -1398,7 +1851,7 @@
                                             if (toolNode) break;
                                         }
                                         if (toolNode) {
-                                            jumpToActivityDetails(toolNode, 'tool', logs);
+                                            jumpToActivityDetails(toolNode, 'tool', allLogs);
                                             matched = true;
                                             break;
                                         }
@@ -1418,7 +1871,7 @@
                         }
                     } catch (fallbackError) {
                         console.error('回退渲染也失败:', fallbackError);
-                        workflowContainer.innerHTML = 
+                        container.innerHTML = 
                             '<div class="alert alert-warning">' +
                                 '<i class="fas fa-exclamation-triangle"></i> Workflow rendering failed' +
                                 '<br><small class="text-muted">Mermaid错误: ' + error.message + '</small>' +
@@ -1426,7 +1879,7 @@
                     }
                 }
             } else {
-                workflowContainer.innerHTML = 
+                container.innerHTML = 
                     '<div class="alert alert-info">' +
                         '<i class="fas fa-info-circle"></i> Mermaid库未加载' +
                         '<br><small class="text-muted">请检查网络连接或稍后再试</small>' +
@@ -1434,18 +1887,13 @@
             }
             
         } catch (error) {
-            console.error('Workflow generation failed:', error);
-            workflowContainer.innerHTML = 
+            console.error('Single workflow chart generation failed:', error);
+            container.innerHTML = 
                 '<div class="alert alert-warning">' +
-                    '<i class="fas fa-exclamation-triangle"></i> Workflow generation failed' +
+                    '<i class="fas fa-exclamation-triangle"></i> Workflow rendering failed' +
                     '<br><small class="text-muted">错误: ' + error.message + '</small>' +
                 '</div>';
-        } finally {
-            // 隐藏加载状态
-            loadingIndicator.style.display = 'none';
         }
-        
-        // 注意：点击事件现在直接在SVG元素上绑定，不需要全局函数
     }
     
     // 跳转到对应的活动详情
@@ -1722,6 +2170,14 @@
                     
                     currentTaskData = data;
                     
+                    // 更新聊天消息
+                    if (data.messages && Array.isArray(data.messages)) {
+                        renderChatMessages(data.messages);
+                    }
+                    
+                    // 更新聊天输入框可用性
+                    updateChatInputAvailability(data.logs, data.task.status);
+
                     // 更新最终执行结果
                     if (data.task.result && data.task.status === 'completed') {
                         const resultContainer = document.getElementById('final-result-content');
@@ -1792,6 +2248,52 @@
         
         console.log('✅ Auto refresh timer started');
     }
+
+    // 初始化基于SSE的实时更新（替代自动刷新）
+    function initEventStream() {
+        try {
+            const taskId = getCurrentTaskId();
+            if (!('EventSource' in window)) {
+                console.warn('EventSource not supported, fallback to auto refresh');
+                startAutoRefresh();
+                return;
+            }
+            if (eventSource) {
+                try { eventSource.close(); } catch (_) {}
+                eventSource = null;
+            }
+            eventSource = new EventSource('/api/task/' + taskId + '/events');
+            eventSource.onopen = function() {
+                console.log('🔌 SSE connected');
+            };
+            eventSource.onerror = function(err) {
+                console.warn('⚠️ SSE error, fallback to auto refresh if not already:', err);
+                if (!refreshInterval) {
+                    startAutoRefresh();
+                }
+            };
+            eventSource.onmessage = function(ev) {
+                try {
+                    const data = JSON.parse(ev.data);
+                    // 若为状态事件，立即更新停止按钮可见性
+                    if (data && data.event === 'status' && data.status) {
+                        updateStopButton(data.status);
+                    }
+                    // 合并事件，短暂去抖，避免高频重复渲染
+                    if (sseDebounceTimer) clearTimeout(sseDebounceTimer);
+                    sseDebounceTimer = setTimeout(async () => {
+                        await fetchLatestData(false);
+                    }, 200);
+                } catch (e) {
+                    console.warn('SSE message parse failed:', e, ev && ev.data);
+                }
+            };
+        } catch (e) {
+            console.error('Init SSE failed:', e);
+            // 最终兜底
+            if (!refreshInterval) startAutoRefresh();
+        }
+    }
     
     // 历史记录点击事件
     document.addEventListener('click', function(e) {
@@ -1857,6 +2359,8 @@
                                     '<i class="fas fa-download"></i> download DOSCAR</a>' +
                                 '<a href="#" class="btn btn-sm btn-outline-info" onclick="downloadByFilePath(decodeURIComponent(\'' + encodeURIComponent(eigenvalPath) + '\'))">' +
                                     '<i class="fas fa-download"></i> download EIGENVAL</a>' +
+                                '<a href="#" class="btn btn-sm btn-outline-success ms-2" onclick="downloadZipByPath(decodeURIComponent(\'' + encodeURIComponent(basePath) + '\'))">' +
+                                    '<i class="fas fa-folder"></i> download folder (ZIP)</a>' +
                             '</div>';
                         const detailEl = document.getElementById('detail-content');
                         detailEl.appendChild(linksContainer);
@@ -1924,6 +2428,19 @@
         return '/api/files/' + taskId + '/' + encodedPath;
     }
 
+    // 构建ZIP下载 API URL（目录或文件，支持绝对路径）
+    function buildZipApiUrl(dirPath) {
+        const taskId = getCurrentTaskId();
+        let processedPath = dirPath || '';
+        if (processedPath.startsWith('/')) {
+            processedPath = '__ABS__' + processedPath;
+        }
+        const pathSegments = processedPath.split('/');
+        const encodedSegments = pathSegments.map(segment => encodeURIComponent(segment));
+        const encodedPath = encodedSegments.join('/');
+        return '/api/files/' + taskId + '/zip/' + encodedPath;
+    }
+
     function getFileName(filePath) {
         if (!filePath) return 'file.txt';
         const parts = filePath.split('/');
@@ -1985,6 +2502,13 @@
     function downloadByFilePath(filePath) {
         const url = buildFileApiUrl(filePath);
         downloadFile(url, getFileName(filePath));
+    }
+
+    // 通过目录路径下载ZIP
+    function downloadZipByPath(dirPath) {
+        const url = buildZipApiUrl(dirPath);
+        const name = (getFileName(dirPath) || 'folder') + '.zip';
+        downloadFile(url, name);
     }
     
     // 显示图片文件
@@ -2324,6 +2848,17 @@
             await generateWorkflowChart(initialData.logs);
         }
         
+        // 初始化聊天消息
+        if (initialData && initialData.messages) {
+            console.log('💬 Rendering initial chat messages...');
+            renderChatMessages(initialData.messages);
+        }
+        
+        // 初始化聊天输入框可用性
+        if (initialData) {
+            updateChatInputAvailability(initialData.logs, initialData.task.status);
+        }
+        
         // 渲染最终执行结果
         const resultContainer = document.getElementById('final-result-content');
         if (resultContainer) {
@@ -2348,24 +2883,27 @@
             }
         }
         
-        // 只有当任务还在运行或等待时才开始自动刷新
-        if (initialData && initialData.task.status !== 'completed' && initialData.task.status !== 'failed') {
-            console.log('🔄 Task status: ' + initialData.task.status + ', start auto refresh');
-            startAutoRefresh();
-        } else {
-            console.log('⏹️ Task status: ' + (initialData?.task.status || 'Unknown') + ', no auto refresh');
-            // 清理可能存在的定时器
-            if (refreshInterval) {
-                clearInterval(refreshInterval);
-                refreshInterval = null;
-            }
-        }
+        // 优先使用SSE进行实时更新；SSE失败时，startAutoRefresh作为兜底
+        initEventStream();
         
         // 初始化停止按钮状态
         if (initialData && initialData.task) {
             updateStopButton(initialData.task.status);
         }
         
+        // 支持 Enter 键发送消息（Shift+Enter 换行）
+        const chatInput = document.getElementById('chat-input');
+        if (chatInput) {
+            chatInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (!chatInput.disabled) {
+                        sendChatMessage();
+                    }
+                }
+            });
+        }
+
         console.log('🎉 Task detail page initialized!');
     });
     
@@ -2373,6 +2911,10 @@
     window.addEventListener('beforeunload', function() {
         if (refreshInterval) {
             clearInterval(refreshInterval);
+        }
+        if (eventSource) {
+            try { eventSource.close(); } catch (_) {}
+            eventSource = null;
         }
     });
     
@@ -2386,6 +2928,9 @@
     window.stopTask = stopTask;
     window.showTextFile = showTextFile;
     window.downloadByFilePath = downloadByFilePath;
+    window.downloadZipByPath = downloadZipByPath;
+    window.sendChatMessage = sendChatMessage;
+    window.switchWorkflowTab = switchWorkflowTab;
     </script>
 </body>
 </html> 

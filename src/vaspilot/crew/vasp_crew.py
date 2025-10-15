@@ -9,37 +9,36 @@ from crewai.memory.storage.ltm_sqlite_storage import LTMSQLiteStorage
 from crewai.memory.storage.rag_storage import RAGStorage
 from chromadb.utils.embedding_functions.openai_embedding_function import OpenAIEmbeddingFunction
 from ..tools.wait_calc_tool import WaitCalcTool
+from ..tools.ask_user_tool import AskUserTool
 from ..tools.json_rag_tool import JsonApproxSearch, JsonStrictSearch
 from crewai_tools import RagTool
 from crewai.knowledge.source.json_knowledge_source import JSONKnowledgeSource
 import yaml
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from .embedding import LocalAPIEmbedder
 from .local_llm import LocalLLM
 from crewai_tools import MCPServerAdapter
+from ..listener.message_listener import MessageListener
 
 class VaspCrew():
 	"""VASPilot crew"""
 
-	def __init__(self, config: Dict[str, Any]):
+	def __init__(self, config: Dict[str, Any], message_listener: Optional[MessageListener] = None):
 		self.config = copy.deepcopy(config)
 		self.llm_mapper = config['llm_mapper']
 		self.llm_config = {}
 		for key, value in config['llm_config'].items():
 			self.llm_config[key] = self.llm_mapper[value]
 		self.embedder = LocalAPIEmbedder(url=config["embbeder"]["url"], model_id=config["embbeder"]["model_id"], api_key=config["embbeder"]["api_key"])
-
 		self.persist_tools = {}
-
+		self.message_listener = message_listener
 		if self.config.get("tool_params", {}).get("json_approx_search_tool", None):
 			self.persist_tools["json_approx_search_tool"] = JsonApproxSearch(embedding_function=self.embedder, source_files=self.config['tool_params']['json_approx_search_tool']['sources'], chroma_db_path=self.config['tool_params']['json_approx_search_tool']['chroma_db_path'])
 		if self.config.get("tool_params", {}).get("json_strict_search_tool", None):
 			self.persist_tools["json_strict_search_tool"] = JsonStrictSearch(source_files=self.config['tool_params']['json_strict_search_tool']['sources'])
-		self.persist_tools["wait_calc_tool"] = WaitCalcTool(mcp_url=self.config['mcp_server']['url'])
-
 		self.agent_tools_dict = {"ask_question_tool":[], "delegate_work_tool":[]}
 		
-	def _create_tools(self) -> Dict[str, Any]:
+	def _create_tools(self, conversation_id: Optional[str] = None) -> Dict[str, Any]:
 		tool_dict = {}
 		tool_dict.update(self.persist_tools)
 		if self.config['mcp_server'] is not None:
@@ -47,6 +46,8 @@ class VaspCrew():
 			self.mcp_server = MCPServerAdapter(mcp_params)
 		for tools in self.mcp_server.tools:
 			tool_dict[tools.name] = tools
+		tool_dict["wait_calc_tool"] = WaitCalcTool(mcp_url=self.config['mcp_server']['url'], message_listener=self.message_listener, conversation_id=conversation_id)
+		tool_dict["ask_user_tool"] = AskUserTool(message_listener=self.message_listener, conversation_id=conversation_id)
 		return tool_dict
 
 	def _inject_agent_tools(self, agent_dict: dict[Agent]) -> Dict[str, Any]:
@@ -126,11 +127,11 @@ class VaspCrew():
 			agents_dict[agent_name] = self._create_agent(agent_name, tool_dict)
 		return agents_dict
 
-	def crew(self, work_dir: str) -> Crew:
+	def crew(self, work_dir: str, conversation_id: Optional[str] = None) -> Crew:
 		"""Creates the VASPilot crew"""
 		if not os.path.exists(f"{work_dir}/memory/"):
 			os.makedirs(f"{work_dir}/memory/")
-		tool_dict = self._create_tools()
+		tool_dict = self._create_tools(conversation_id)
 		agent_dict = self._create_working_agents(tool_dict)
 		manager_agent = self._create_manager_agent()
 		agent_dict = self._inject_agent_tools(agent_dict)

@@ -12,7 +12,7 @@ import numpy as np
 from mcp.server.fastmcp import Context
 
 
-def _submit_slurm_job(calc_type: str, calculate_path: str, 
+def submit_slurm_job(calc_type: str, calculate_path: str, 
                      attachment_path: Optional[str] = None) -> Dict[str, Any]:
     """
     通用的SLURM任务提交方法
@@ -93,7 +93,8 @@ def _submit_slurm_job(calc_type: str, calculate_path: str,
 
 
 def vasp_relaxation(calculation_id: str, work_dir: str, struct: Structure, 
-                   kpoints: Kpoints, incar_dict: dict, attachment_path: Optional[str] = None, potcar_map: Optional[Dict] = None) -> Dict[str, Any]:
+                   kpoints: Kpoints, incar_dict: dict, attachment_path: Optional[str] = None, 
+                   potcar_map: Optional[Dict] = None, submit_slurm: bool = True) -> Dict[str, Any]:
     """
     提交VASP结构优化计算任务
     
@@ -144,12 +145,22 @@ def vasp_relaxation(calculation_id: str, work_dir: str, struct: Structure,
     vasp_input.write_input(rlx_dir)
     
     # 提交SLURM任务
-    return _submit_slurm_job("relaxation", rlx_dir, attachment_path)
+    if submit_slurm:
+        return submit_slurm_job("relaxation", rlx_dir, attachment_path)
+    else:
+        return {
+            "calc_type": "relaxation",
+            "calculate_path": rlx_dir,
+            "success": True,
+            "error": None,
+            "status": "prepared"
+        }
 
 
 def vasp_scf(calculation_id: str, work_dir: str, struct: Structure, 
             kpoints: Kpoints, incar_dict: dict, chgcar_path: Optional[str] = None, 
-            wavecar_path: Optional[str] = None, attachment_path: Optional[str] = None, potcar_map: Optional[Dict] = None) -> Dict[str, Any]:
+            wavecar_path: Optional[str] = None, attachment_path: Optional[str] = None, 
+            potcar_map: Optional[Dict] = None, submit_slurm: bool = True) -> Dict[str, Any]:
     """
     提交VASP自洽场计算任务
     
@@ -208,13 +219,22 @@ def vasp_scf(calculation_id: str, work_dir: str, struct: Structure,
         shutil.copy2(wavecar_path, os.path.join(scf_dir, "WAVECAR"))
     
     # 提交SLURM任务
-    return _submit_slurm_job("scf", scf_dir, attachment_path)
+    if submit_slurm:
+        return submit_slurm_job("scf", scf_dir, attachment_path)
+    else:
+        return {
+                "calc_type": "scf",
+                "calculate_path": scf_dir,
+                "success": True,
+                "error": None,
+                "status": "prepared"
+            }
 
 
 def vasp_nscf(calculation_id: str, work_dir: str, struct: Structure, 
              kpoints: Kpoints, incar_dict: dict, chgcar_path: str, 
              wavecar_path: Optional[str] = None, attachment_path: Optional[str] = None, 
-             potcar_map: Optional[Dict] = None) -> Dict[str, Any]:
+             potcar_map: Optional[Dict] = None, submit_slurm: bool = True) -> Dict[str, Any]:
     """
     提交VASP非自洽场计算任务（能带计算）
     
@@ -274,7 +294,16 @@ def vasp_nscf(calculation_id: str, work_dir: str, struct: Structure,
         shutil.copy2(wavecar_path, os.path.join(band_dir, "WAVECAR"))
     
     # 提交SLURM任务
-    return _submit_slurm_job("nscf", band_dir, attachment_path)
+    if submit_slurm:
+        return submit_slurm_job("nscf", band_dir, attachment_path)
+    else:
+        return {
+            "calc_type": "nscf",
+            "calculate_path": band_dir,
+            "success": True,
+            "error": None,
+            "status": "prepared"
+        }
 
 
 def check_status(calc_dict: dict[str, dict[str, Any]]) -> Dict[str, Any]:
@@ -355,7 +384,7 @@ def check_status(calc_dict: dict[str, dict[str, Any]]) -> Dict[str, Any]:
                 "slurm_id": slurm_id,
                 "calc_type": calc_type,
                 "calculate_path": calculate_path,
-                "status": "error",
+                "status": "unknown",
                 "error": str(e)
             }
     

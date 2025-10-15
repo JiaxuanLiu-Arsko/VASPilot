@@ -45,6 +45,10 @@ class CrewServer(ABC):
     def tool_output(self, tool_name: str, message: Dict[str, Any], crew_fingerprint: str = None):
         pass
 
+    @abstractmethod
+    def save_conversation_messages(self, conversation_id: str, role_name:str, message:str):
+        pass
+
     def log_history(self, history: Dict[str, Any]):
         self.history_log.append(history)
 

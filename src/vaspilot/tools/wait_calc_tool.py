@@ -5,6 +5,7 @@ from typing import Type, Optional, Dict, Any, List, Union
 from crewai.tools import BaseTool
 from pydantic import BaseModel, Field
 from fastmcp.client import Client
+from ..listener.message_listener import MessageListener
 
 class WaitCalcInput(BaseModel):
     """归档工具的输入模式"""
@@ -12,15 +13,18 @@ class WaitCalcInput(BaseModel):
 
 class WaitCalcTool(BaseTool):
     mcp_url: str = "http://localhost:8933/mcp"
+    message_listener: Optional[MessageListener] = None
+    conversation_id: Optional[str] = None
     args_schema: Type[BaseModel] = WaitCalcInput
     
-    def __init__(self, mcp_url: str):
+    def __init__(self, mcp_url: str, message_listener: Optional[MessageListener] = None, conversation_id: Optional[str] = None):
         super().__init__(
             name="wait_calculations",
             description="检查计算任务状态并返回结果"
         )
-        # 使用 object.__setattr__ 来绕过 Pydantic 验证
         self.mcp_url = mcp_url
+        self.message_listener = message_listener
+        self.conversation_id = conversation_id
 
     async def _check_status(self, calculation_ids: List[str]) -> Dict[str, Any]:
         async with Client(self.mcp_url) as client:
@@ -28,6 +32,15 @@ class WaitCalcTool(BaseTool):
             tool_result = await client.call_tool("check_calculation_status", {"calculation_ids": calculation_ids})
         if tool_result.data is None:
             return {"error": "No result from check_calculation_status"}
+        else:
+            return tool_result.data
+
+    async def _cancel_slurm_job(self, calculation_ids: List[str]) -> Dict[str, Any]:
+        async with Client(self.mcp_url) as client:
+            # call tool
+            tool_result = await client.call_tool("cancel_slurm_job", {"calc_ids": calculation_ids})
+        if tool_result.data is None:
+            return {"error": "No result from cancel_slurm_job"}
         else:
             return tool_result.data
 
@@ -62,6 +75,13 @@ class WaitCalcTool(BaseTool):
         
         while pending_calc_ids:
             try:
+                # 有用户消息时，取消计算任务并返回给agent
+                if self.message_listener is not None:
+                    message = self.message_listener.read_user_message(self.conversation_id)
+                    if message:
+                        asyncio.run(self._cancel_slurm_job(pending_calc_ids))
+                        return {"status": "Interrupted by user", "user_message": message}
+                
                 # 只检查尚未完成的计算任务
                 status_result = asyncio.run(self._check_status(pending_calc_ids))
                 

@@ -3,7 +3,7 @@ from pathlib import Path
 import os
 import yaml
 
-from ..tools.mcp.mcp_server import main as mcp_main
+from ..tools.mcp.mcp_server import VASPMCPServer
 
 def start_mcp():
     """主函数 - 命令行启动入口"""
@@ -37,8 +37,9 @@ def start_mcp():
     print(f"🚀 启动VASP MCP服务器...")
     print(f"📁 工作目录: {work_dir}")
     
-    # 启动MCP服务器
-    mcp_main(config_path=config_path, port=args.port, host=args.host)
+    # 启动MCP服务器（类方式）
+    server = VASPMCPServer(config_path=config_path, port=args.port, host=args.host)
+    server.run()
 
 
 if __name__ == "__main__":

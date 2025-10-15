@@ -1207,9 +1207,23 @@
                     mermaidCode += '    ' + activity.id + '(' + safeName + ')\n';
                 });
                 
-                // 连接Agent节点
-                for (let i = 0; i < activities.length - 1; i++) {
-                    mermaidCode += '    ' + activities[i].id + ' --> ' + activities[i + 1].id + '\n';
+                // 连接Agent节点：从“上一条输出的Agent”指向“下一条输入的Agent”
+                // 对于每个Agent，找到 logIndex 大于其 outputLogIndex 的最早下一个Agent
+                for (let i = 0; i < activities.length; i++) {
+                    const fromAgent = activities[i];
+                    const fromOutputIndex = (typeof fromAgent.outputLogIndex === 'number') ? fromAgent.outputLogIndex : fromAgent.logIndex;
+                    let nextAgent = null;
+                    for (let j = 0; j < activities.length; j++) {
+                        const candidate = activities[j];
+                        if (candidate.logIndex > fromOutputIndex) {
+                            if (!nextAgent || candidate.logIndex < nextAgent.logIndex) {
+                                nextAgent = candidate;
+                            }
+                        }
+                    }
+                    if (nextAgent) {
+                        mermaidCode += '    ' + fromAgent.id + ' --> ' + nextAgent.id + '\n';
+                    }
                 }
                 
                 // 创建工具节点 - 使用方角长方形
