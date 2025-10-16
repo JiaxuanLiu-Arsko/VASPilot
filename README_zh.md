@@ -6,6 +6,8 @@
 
 VASPilot是一个开源平台，通过基于CrewAI框架构建的多智能体架构和标准化的模型控制协议（MCP），实现VASP工作流的全自动化。它处理VASP研究的每个阶段——从检索晶体结构和生成输入文件到提交Slurm作业、解析错误信息以及动态调整参数以实现无缝重启。
 
+[部署与扩展详细指南](docs/vaspilot_deployment_guide_zh.md)
+
 ## 架构
 
 ![架构图](figs/Fig_1.png)
