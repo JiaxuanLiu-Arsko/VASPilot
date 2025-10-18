@@ -439,7 +439,7 @@
                             </div>
                             <div class="chat-input-area">
                                 <div class="chat-input-wrapper">
-                                    <textarea class="chat-input" id="chat-input" rows="1" placeholder="输入消息..." disabled></textarea>
+                                    <textarea class="chat-input" id="chat-input" rows="4" placeholder="输入消息..." disabled></textarea>
                                     <button class="btn btn-primary chat-send-btn" id="chat-send-btn" onclick="sendChatMessage()" disabled>
                                         <i class="fas fa-paper-plane"></i>
                                     </button>
@@ -2891,18 +2891,7 @@
             updateStopButton(initialData.task.status);
         }
         
-        // 支持 Enter 键发送消息（Shift+Enter 换行）
-        const chatInput = document.getElementById('chat-input');
-        if (chatInput) {
-            chatInput.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    if (!chatInput.disabled) {
-                        sendChatMessage();
-                    }
-                }
-            });
-        }
+        // 回车与 Shift+Enter 均为正常换行，发送仅通过按钮触发
 
         console.log('🎉 Task detail page initialized!');
     });
